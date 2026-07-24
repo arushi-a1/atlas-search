@@ -1,0 +1,70 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Crawls seeds.txt, writes indexed documents to the shared volume.
+  # Scale with `docker compose up --scale crawler=4` and set WORKER_COUNT
+  # to match so each replica claims a disjoint shard of hosts.
+  crawler:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    environment:
+      WORKER_INDEX: "0"
+      WORKER_COUNT: "1"
+      DSE_SEED_FILE: /data/seeds.txt
+      DSE_OUTPUT_FILE: /data/documents.tsv
+      DSE_MAX_PAGES: "500"
+    volumes:
+      - ./data:/data
+
+  search-api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      DSE_BIND_ADDRESS: 0.0.0.0
+      DSE_PORT: "8080"
+      DSE_THREADS: "16"
+      DSE_DOCUMENT_DUMP: /data/documents.tsv
+      DSE_REDIS_HOST: redis
+      DSE_REDIS_PORT: "6379"
+    volumes:
+      - ./data:/data:ro
+    ports: ["8080:8080"]
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080
+    ports: ["3000:80"]
+    depends_on: [search-api]
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["9090:9090"]
+    depends_on: [search-api]
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports: ["3001:3000"]
+    depends_on: [prometheus]

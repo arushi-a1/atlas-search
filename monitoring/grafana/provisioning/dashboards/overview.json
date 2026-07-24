@@ -1,0 +1,39 @@
+{
+  "title": "Distributed Search Engine - Overview",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Documents Indexed",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [{ "expr": "dse_documents_indexed", "legendFormat": "docs" }]
+    },
+    {
+      "type": "stat",
+      "title": "Cache Connected",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "targets": [{ "expr": "dse_cache_connected", "legendFormat": "connected" }]
+    },
+    {
+      "type": "graph",
+      "title": "Search Requests / sec",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "rate(dse_search_requests_total[1m])", "legendFormat": "requests/sec" }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Cache Hit Rate",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "rate(dse_cache_hits_total[5m]) / (rate(dse_cache_hits_total[5m]) + rate(dse_cache_misses_total[5m]))",
+          "legendFormat": "hit rate"
+        }
+      ]
+    }
+  ]
+}
