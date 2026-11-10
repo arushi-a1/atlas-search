@@ -41,3 +41,21 @@ TEST(DecodesHtmlEntities) {
   auto page = HtmlParser::Parse(html, "https://example.com/");
   ASSERT_EQ(page.title, "Fish & Chips");
 }
+
+TEST(BlockTagsSeparateWords) {
+  // Regression: adjacent block elements used to be glued together
+  // ("rankingBM25"), creating bogus index terms.
+  std::string html =
+      "<html><head><title>Okapi BM25 ranking</title></head>"
+      "<body><h1>Search</h1><p>A distributed engine.</p><div>Next</div>"
+      "<ul><li>one</li><li>two</li></ul>line<br>break</body></html>";
+  auto page = HtmlParser::Parse(html, "https://example.com/");
+  ASSERT_EQ(page.visible_text,
+            "Okapi BM25 ranking Search A distributed engine. Next one two line break");
+}
+
+TEST(InlineTagsDoNotSplitWords) {
+  std::string html = "<p><b>W</b>ord and <span>more</span>text</p>";
+  auto page = HtmlParser::Parse(html, "https://example.com/");
+  ASSERT_EQ(page.visible_text, "Word and moretext");
+}

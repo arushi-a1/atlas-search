@@ -71,13 +71,59 @@ std::string HtmlParser::ResolveUrl(const std::string& base,
   return base_dir + href;
 }
 
+namespace {
+
+// Tags that end a run of text in a browser (block-level elements, line
+// breaks, table cells, and document-structure tags). When one of these is
+// stripped we emit a space so "<p>foo</p><p>bar</p>" becomes "foo bar"
+// rather than "foobar". Inline tags (<b>, <span>, <a>, ...) are removed
+// without a space so "<b>W</b>ord" stays "Word".
+bool IsBlockTag(const std::string& tag_body) {
+  static const char* kBlockTags[] = {
+      "address", "article", "aside", "blockquote", "body", "br", "dd",
+      "div", "dl", "dt", "fieldset", "figcaption", "figure", "footer",
+      "form", "h1", "h2", "h3", "h4", "h5", "h6", "head", "header", "hr",
+      "html", "li", "main", "meta", "nav", "ol", "p", "pre", "section",
+      "table", "tbody", "td", "tfoot", "th", "thead", "title", "tr", "ul"};
+  // tag_body is everything between '<' and '>', e.g. "/p", "br/",
+  // "div class=x". Pull out the bare lowercase tag name.
+  size_t i = 0;
+  if (i < tag_body.size() && tag_body[i] == '/') ++i;
+  std::string name;
+  while (i < tag_body.size() &&
+         std::isalnum(static_cast<unsigned char>(tag_body[i]))) {
+    name += static_cast<char>(
+        std::tolower(static_cast<unsigned char>(tag_body[i])));
+    ++i;
+  }
+  for (const char* t : kBlockTags) {
+    if (name == t) return true;
+  }
+  return false;
+}
+
+}  // namespace
+
 std::string HtmlParser::StripTags(const std::string& fragment) {
   std::string out;
+  std::string tag_body;
   bool in_tag = false;
   for (char c : fragment) {
-    if (c == '<') { in_tag = true; continue; }
-    if (c == '>') { in_tag = false; continue; }
-    if (!in_tag) out += c;
+    if (c == '<') {
+      in_tag = true;
+      tag_body.clear();
+      continue;
+    }
+    if (c == '>' && in_tag) {
+      in_tag = false;
+      if (IsBlockTag(tag_body)) out += ' ';
+      continue;
+    }
+    if (in_tag) {
+      tag_body += c;
+    } else {
+      out += c;
+    }
   }
   return out;
 }

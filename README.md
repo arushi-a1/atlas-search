@@ -27,7 +27,7 @@ implementation with a full search-engine stack around it.
   dashboard (requests/sec, cache hit rate, index size)
 - **Deployment**: Dockerfiles for each service + a `docker-compose.yml`
   wiring the full stack
-- **Tests**: 18 unit tests (tokenizer, robots.txt, index/BM25/phrase
+- **Tests**: 20 unit tests (tokenizer, robots.txt, index/BM25/phrase
   search, HTML parsing) with a small dependency-free test framework
 - **CI**: GitHub Actions -- backend build+test, frontend build, Docker
   image build check
